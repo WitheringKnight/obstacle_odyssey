@@ -1,5 +1,5 @@
 let debug = 0
-
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 class Player{
     constructor(){
         this.position = {
