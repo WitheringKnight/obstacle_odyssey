@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta name="author" content="Daniel Torelli">
+	<meta name="description" content="Platform game 2d coded in Javascript through the canvas">
+	<meta http-equiv="cache-control" content="no-cache"/>
+    <title>2D Platform Game</title>
+</head>
+<body>
+    
+<!--Codice css per il design del canvas-->
+<style>
+    body{
+        margin:0;
+        overflow: hidden;
+		background: #404040;
+    }
+	canvas{
+		display: none;
+	}
+	.container{
+		display: block;
+		margin: 0 auto;
+		width: 50%;
+	}
+</style>
+<!--tag canvas per costruire la struttura del gioco-->
+<div id="splash_screen" class="container">
+
+	<div style="margin-top: 45px;">
+		<img src="img/title.png">
+	</div>	
+	<div style="margin: 25px;">
+		<img src="img/text1.png">
+	</div>
+	<div style="margin-top: 145px;text-align: center;">
+		<img src="img/text2.png">
+	</div>
+	<div style="margin-top: 145px;text-align: center;">
+		<img src="img/text3.png">
+	</div>
+</div>
+<canvas id="game"></canvas>
+<!--tag script per inizializzare il gioco-->
+<script src = "classes.js"></script>
+<script src = "script.js"></script>
+</body>
+</html>
