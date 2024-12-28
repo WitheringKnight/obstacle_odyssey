@@ -1,4 +1,4 @@
-let debug = 0
+let debug = 1
 
 class Player{
     constructor(){
@@ -112,10 +112,16 @@ class Enemy{
         this.height = 95
         this.debugFrameColor = 'black'
         this.gameover = false
-		this.can_jump = true
+		this.can_jump = false
 		this.goingR = true
+		this.sinistra = true
+		this.destra = false
+		this.tempoSinistro = 0
+		this.tempoDestro = 0
     }
-    draw(){
+    draw()
+	{
+		
         c.drawImage(this.sprite,this.width * this.framesX,this.height * this.framesY,this.width,this.height,this.position.x,this.position.y,
             this.width,this.height)
 		if(debug)
@@ -127,29 +133,59 @@ class Enemy{
 		}
     }
     update(){
+		console.log("nemico = " + this.position.x)
 		this.elapsedFrames++
-		if(this.elapsedFrames % this.frameBuffer == 0){
-			if(left_pressed || right_pressed){
-				this.framesX++
-			}
-			else{
-				this.framesX++
-				if(this.goingR)
-					this.framesY = 0
-				else
-					this.framesY = 1
-			}
-			this.elapsedFrames = 0
-		//}
-		
-        if (this.framesX > 7)
-            this.framesX = 0
+		if (this.sinistra)
+		{	
+			this.framesY = 3
+			this.position.x -= 5;
+			this.tempoSinistro += 1; 
 
-        this.position.y += this.velocity.y
-        this.position.x += this.velocity.x
+			if (this.tempoSinistro >= 120)
+			{ 
+				this.sinistra = false;
+				this.destra = true;
+				this.tempoSinistro = 0;
+				this.elapsedFrames = 0
+			}
+		}
+		if (this.destra)
+		{
+			this.framesY = 2
+			this.position.x += 5;
+			this.tempoDestro += 1; 
+
+			if (this.tempoDestro >= 120) 
+			{ 
+				this.sinistra = true;
+				this.destra = false;
+				this.tempoDestro = 0;
+				this.elapsedFrames = 0
+			}
+		}
+		if(this.elapsedFrames % this.frameBuffer == 0)
+		{
+			this.framesX++
+			this.elapsedFrames = 0
+		}
+			
+			if (this.framesX > 7)
+			    this.framesX = 0
+
+			// il nemico sta fermo
+
+			//else{
+			//	this.framesX++
+			//	if(this.goingR)
+			//		this.framesY = 0
+			//	else
+			//		this.framesY = 1
+			//}
+			//this.elapsedFrames = 0
+		
+		
 
         
-		}
     }
 }
 
@@ -314,6 +350,7 @@ class Obstacle{
 		this.tempoDestro = 0
     }
 	move_Obstacle(dir){
+		console.log(dir)
 		switch(dir){
 		//orizzontale
 		case 1:
@@ -332,29 +369,6 @@ class Obstacle{
 			this.tempoDestro += 1; 
 
 			if (this.tempoDestro >= 120) { 
-				this.sinistra = true;
-				this.destra = false;
-				this.tempoDestro = 0; 
-			}
-		}
-		break
-		//orizzontale inverso
-		case 2:
-		if (this.sinistra){	
-			this.position.x += 1.5;
-			this.tempoSinistro += 1; 
-
-			if (this.tempoSinistro >= 200) { 
-				this.sinistra = false;
-				this.destra = true;
-				this.tempoSinistro = 0; 
-			}
-		}
-		if (this.destra){
-			this.position.x -= 1.5;
-			this.tempoDestro += 1; 
-
-			if (this.tempoDestro >= 200) { 
 				this.sinistra = true;
 				this.destra = false;
 				this.tempoDestro = 0; 

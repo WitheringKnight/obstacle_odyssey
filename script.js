@@ -1,8 +1,7 @@
-//09/07/2023 - v1.6
+//28/12/2024 - v1.6.5
 
 //changelog
-//aggiunto movimento giocatore da fermo
-//aggiunto schermata iniziale
+//aggiunto movimento al nemico (ty myself)
 //ottimizzazione del codice
 //ci salvi chi può
 
@@ -61,7 +60,7 @@ function init(){
                 new genericObject(758,  460, "img/sasso2.png"),
                 new genericObject(4250,  460, "img/premio.png")
                 ],
-            enemies:[
+            Obstacles:[
                 new Obstacle(2350,  420,0, "img/cactus.png"),
                 new Obstacle(2750,  420,1, "img/cactus.png")
                 ]
@@ -91,15 +90,19 @@ function init(){
                   new genericObject(150,  478, "img/sasso1.png"),
                   new genericObject(758,  460, "img/sasso2.png"),
                   new genericObject(4250,  460, "img/premio.png")
-                  ]
+                  ],
+              enemies:[
+                  new Enemy(2600, 442)
+              ]
             }
         ]
     } 
 
     player = new Player()
     console.log(next)
-    if(next > 0)
-        enemy = new Enemy(5, 420)
+
+    //if(next > 0)
+    //    enemy = new Enemy(500, 420)
 	animate()
 }
 //creo il game over
@@ -143,19 +146,23 @@ function animate(){
     })
 	player.update()
 	player.draw()
-    if(next > 0){
-        enemy.update()
-	    enemy.draw()
+    if(levels.level[next].enemies){
+        levels.level[next].enemies[0].update()
+        levels.level[next].enemies[0].draw()
     }
+    //if(next > 0){
+    //    enemy.update()
+	//    enemy.draw()
+    //}
     levels.level[next].platforms.forEach(platform =>{
         platform.update(player)
         platform.draw()
     })
-    console.log(levels.level[next].enemies)
-    if(levels.level[next].enemies)  
-        levels.level[next].enemies.forEach(enemy =>{
-            enemy.update(player)
-            enemy.draw()
+    //console.log(levels.level[next].enemies)
+    if(levels.level[next].Obstacles)  
+        levels.level[next].Obstacles.forEach(Obstacle =>{
+            Obstacle.update(player)
+            Obstacle.draw()
     })
 	printText(c, "white" , 24, "Current lives: " + lives, 1)
     
@@ -175,13 +182,18 @@ function animate(){
             })
             levels.level[next].pavements.forEach((pavement) =>{
             pavement.position.x -= 5
+            //console.log(enemy.position.x)
         })
+        if(levels.level[next].enemies){
+            levels.level[next].enemies[0].position.x -= 5
+            //console.log(enemy.position.x)
+        }
         levels.level[next].stones.forEach((stone) =>{
             stone.position.x -= 5
         })
-        if(levels.level[next].enemies)  
-            levels.level[next].enemies.forEach((enemy) =>{
-                enemy.position.x -= 5
+        if(levels.level[next].Obstacles)  
+            levels.level[next].Obstacles.forEach((Obstacle) =>{
+                Obstacle.position.x -= 5
             })
         }
         else if(left_pressed){
@@ -203,9 +215,13 @@ function animate(){
             levels.level[next].stones.forEach((stone) =>{
                 stone.position.x += inc
         })
-        if(levels.level[next].enemies)
-            levels.level[next].enemies.forEach((enemy) =>{
-                enemy.position.x += inc
+        if(levels.level[next].enemies){
+            levels.level[next].enemies[0].position.x += inc
+            //console.log(enemy.position.x)
+        }
+        if(levels.level[next].Obstacles)
+            levels.level[next].Obstacles.forEach((Obstacle) =>{
+                Obstacle.position.x += inc
             })
         }
     }
