@@ -29,6 +29,14 @@ let Death = new Audio("sounds/Death.mp3")
 let Steps = new Audio("sounds/Steps.mp3")
 let splash = document.getElementById('splash_screen')
 let game = document.getElementById('game')
+
+//creo il caricatore di munizioni
+let caricatore_player = []
+let proiettili_player = 3
+
+//creo il caricatore di munizioni per il nemico
+let caricatore_nemico = []
+let proiettili_nemico = 3
 	
 function init(){
     Music.play()
@@ -72,14 +80,14 @@ function init(){
                   new Layer(0, 300, 0.5, "img/trees.png")
                   ],
               platforms:[     
-                  new Platform(450, 300, 0,"img/platform1.png"),
+                  //new Platform(450, 300, 0,"img/platform1.png"),
                   new Platform(1250,350, 2, "img/platform1.png"),
                   new Platform(1650, 350, 1, "img/platform1.png"),
                   new Platform(3350,350, 2, "img/platform1.png"),
                   new Platform(3650, 350, 3, "img/platform1.png")
                   ],
               pavements:[ 
-                  new Pavement(0,535,"img/pavement.png"),
+                  //new Pavement(0,535,"img/pavement.png"),
                   new Pavement(700,535,"img/pavement.png"),
                   new Pavement(2000, 535,"img/pavement.png"),
                   new Pavement(2350, 535,"img/pavement.png"),
@@ -87,7 +95,7 @@ function init(){
                   new Pavement(4000,535,"img/pavement.png")
                   ],
               stones:[
-                  new genericObject(150,  478, "img/sasso1.png"),
+                  //new genericObject(150,  478, "img/sasso1.png"),
                   new genericObject(758,  460, "img/sasso2.png"),
                   new genericObject(4250,  460, "img/premio.png")
                   ],
@@ -98,8 +106,13 @@ function init(){
         ]
     } 
 
+    for(let i = 0; i<proiettili_nemico; i++)
+	{	
+        caricatore_nemico.push(new Enemy_paperplane())
+	}
+
     player = new Player()
-    console.log(next)
+    console.log(caricatore_nemico)
 
     //if(next > 0)
     //    enemy = new Enemy(500, 420)
@@ -147,7 +160,7 @@ function animate(){
 	player.update()
 	player.draw()
     if(levels.level[next].enemies){
-        levels.level[next].enemies[0].update()
+        levels.level[next].enemies[0].update(player)
         levels.level[next].enemies[0].draw()
     }
     //if(next > 0){
@@ -167,10 +180,10 @@ function animate(){
 	printText(c, "white" , 24, "Current lives: " + lives, 1)
     
     //controllo le collisioni del giocatore 
-    if(right_pressed && player.position.x < 400){
+    if(right_pressed && player.position.x < (window.screen.width-77)/2){
         player.velocity.x = 5
     }
-    else if(left_pressed && player.position.x > 100){
+    else if(left_pressed && player.position.x > (window.screen.width-144)/2){
         player.velocity.x = -5
     }
     else{
@@ -240,10 +253,10 @@ function animate(){
 		}
     })
 	
-        if(player.position.y + player.height >= levels.level[next].stones[2].position.y
-            && player.position.y + player.height + player.velocity.y >= levels.level[next].stones[2].position.y 
-            && player.position.x + player.width >= levels.level[next].stones[2].position.x + 30 
-            && player.position.x + player.width <= levels.level[next].stones[2].position.x + levels.level[next].stones[2].image.width + 30
+        if(player.position.y + player.height >= levels.level[next].stones[1].position.y
+            && player.position.y + player.height + player.velocity.y >= levels.level[next].stones[1].position.y 
+            && player.position.x + player.width >= levels.level[next].stones[1].position.x + 30 
+            && player.position.x + player.width <= levels.level[next].stones[1].position.x + levels.level[next].stones[1].image.width + 30
             )
             {
                 /*if(next != 1)
@@ -277,7 +290,6 @@ window.addEventListener('keydown',(event)=>{
         break
         case 'a':
             left_pressed = true
-            player.framesY = 3
 			player.goingR = false
         break
         case 's':
@@ -285,7 +297,6 @@ window.addEventListener('keydown',(event)=>{
         break
         case 'd':
             right_pressed = true
-            player.framesY = 2
 			player.goingR = true
         break
     }
