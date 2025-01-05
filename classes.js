@@ -1,13 +1,5 @@
-let debug = 1
+let debug = 0
 
-function get_proiettile_nemico()
-	{
-		for(let i = 0; i < caricatore_nemico.length; i++)
-		{
-			if(caricatore_nemico[i].available) return caricatore_nemico[i]
-
-		}
-	}
 class Player{
     constructor(){
         this.position = {
@@ -16,7 +8,6 @@ class Player{
         }
 		
         this.velocity = {
-            x: 0,
             y: 0
         }
         
@@ -55,6 +46,7 @@ class Player{
 			Death.play()
 			setTimeout(function(){
 			lives = 3
+			caricatore_nemico = []
 			splash.style.display = "block"
 			game.style.display = "none"
 			},1500)
@@ -86,7 +78,6 @@ class Player{
             this.framesX = 0
 
         this.position.y += this.velocity.y
-        this.position.x += this.velocity.x
 
         //condizione che controlla se il giocatore esce fuori dal fondo della pagina
         if(this.position.y + this.height + this.velocity.y <= canvas.height){
@@ -96,6 +87,7 @@ class Player{
         else{ 
 			this.gameover = true
 			lives--
+			caricatore_nemico = []
             setTimeout(init, 25)
         }	
 		}
@@ -133,6 +125,7 @@ class Enemy{
 		this.goingR = false
 		this.sinistra = true
 		this.destra = false
+		this.outOfBullets = false
 		this.tempoSinistro = 0
 		this.tempoDestro = 0
     }
@@ -141,51 +134,30 @@ class Enemy{
 		
         c.drawImage(this.sprite,this.width * this.framesX,this.height * this.framesY,this.width,this.height,this.position.x,this.position.y,
             this.width,this.height)
-		if(debug)
+
+		if (!this.goingR) {
+			this.hitbox_posX = this.position.x + 77
+			this.hitbox_posX -= this.hitbox_width
+			//console.log("sinistra: " + this.hitbox_width)
+		}
+		else {
+			this.hitbox_posX = this.position.x
+			//console.log("destra: " + this.hitbox_width)
+		}
+
+		if (debug)
 		{
 			c.strokeStyle = this.debugFrameColor
 			c.beginPath();
-			if( ! this.goingR)
-			{
-				this.hitbox_posX = this.position.x + 77
-				this.hitbox_posX -= this.hitbox_width
-				//console.log("sinistra: " + this.hitbox_width)
-			}
-			else
-			{
-				this.hitbox_posX = this.position.x
-				//console.log("destra: " + this.hitbox_width)
-			}
-
-			
 			c.rect(this.hitbox_posX, this.position.y, this.hitbox_width, this.height);
 			c.stroke();
 		}
     }
-    update(player){
-		//controllo le collisioni col giocatore
-		
-		
-		
+	update()
+	{
 		this.elapsedFrames++
-		if (player.position.x < this.hitbox_posX + this.hitbox_width && player.position.x + player.width > this.hitbox_posX)
-		{
-			const proiettile = get_proiettile_nemico()
-			if (proiettile)
-			{
-				proiettile.available = false
-				proiettile.position.x = this.position.x
-				proiettile.position.y = this.position.y-95
-				proiettile.update()
-				proiettile.draw()
-			}
-				
-			this.debugFrameColor = 'red'
-			this.goingR ? this.framesY = 4 : this.framesY = 5
-			this.stopWalking = true
-			//console.log(this.frameY)
-		}
-		else if (this.sinistra && ! this.stopWalking)
+		
+		if (this.sinistra && ! this.stopWalking)
 		{	
 			this.goingR = false;
 			this.framesY = 3
@@ -216,13 +188,7 @@ class Enemy{
 				this.elapsedFrames = 0
 			}
 		}
-		else
-		{
-			this.stopWalking = false
-			this.frameY = 3
-			this.debugFrameColor = 'black'
-			//console.log(this.frameY)
-		}
+		
 
 		if(this.elapsedFrames % this.frameBuffer == 0)
 		{
@@ -253,10 +219,16 @@ class Enemy_paperplane
         this.position = {
             x: 0,
             y: 0
-        }
+		}
+
+		this.hitbox = {
+			width: 35,
+			height: 20
+
+		}
 		
         this.velocity = {
-            x: 0,
+            x: 2,
             y: 0
         }
         
@@ -277,11 +249,11 @@ class Enemy_paperplane
 		//flag che controlla se il proiettile può apparire sullo schermo
 		this.available = true
 
-        this.debugFrameColor = 'black'
+		this.debugFrameColor = 'black'
+
+		//flag che controlla la direzione dell'aeroplanino 
 		this.goingR = false
     }
-
-	
 
     draw()
 	{
@@ -289,53 +261,102 @@ class Enemy_paperplane
         c.drawImage(this.sprite,this.width * this.framesX,this.height * this.framesY,this.width,this.height,this.position.x,this.position.y,
             this.width,this.height)
 
-		if(debug)
+		if (debug && !this.available)
 		{
 			c.strokeStyle = this.debugFrameColor
 			c.beginPath();
-			c.rect(this.position.x, this.position.y, this.width, this.height);
+			c.rect(this.position.x+35, this.position.y+10, this.hitbox.width, this.hitbox.height);
 			c.stroke();
 		}
     }
 
-    update()
+    update(player)
 	{
-		if(! this.available)
+		//collisione giocatore -> aeroplanino
+		
+		if(!this.goingR)
 		{
-			this.position.x -=5
-		}
-		this.elapsedFrames++
-		if (this.sinistra)
-		{	
-			this.goingR = false;
-			this.framesY = 3
-			this.position.x -= 5;
-			this.tempoSinistro += 1; 
-
-			if (this.tempoSinistro >= 120)
-			{ 
+			if (!this.available && player.position.y + player.height >= this.position.y + this.hitbox.height
+			&& player.position.y + player.height >= this.position.y + this.hitbox.height
+			&& player.position.x + player.width >= this.position.x + 30
+			&& player.position.x + player.width <= this.position.x + this.hitbox.width + 30)
+			{
+				this.debugFrameColor = 'red'
+				player.gameover = true
+				lives--
+				caricatore_nemico = []
+				setTimeout(init, 25)
+				return
+			}
+			else if (player.velocity.y > 0)
+			{
+				if (player.position.y + player.height >= this.position.y
+					&& player.position.y + player.height <= this.position.y + 10
+					&& player.position.x + player.width >= this.position.x
+					&& player.position.x <= this.position.x + this.width)
+				{
+					this.debugFrameColor = 'red'
+					player.gameover = true
+					lives--
+					caricatore_nemico = []
+					setTimeout(init, 25)
+					return
+				}
 				
-				this.sinistra = false;
-				this.destra = true;
-				this.tempoSinistro = 0;
-				this.elapsedFrames = 0
 			}
+			else
+				this.debugFrameColor = 'black'
 		}
-		if (this.destra)
+		else
 		{
-			this.goingR = true;
-			this.framesY = 2
-			this.position.x += 5;
-			this.tempoDestro += 1; 
-
-			if (this.tempoDestro >= 120) 
-			{ 
-				this.sinistra = true;
-				this.destra = false;
-				this.tempoDestro = 0;
-				this.elapsedFrames = 0
+			if (!this.available && player.position.y + player.height >= this.position.y + this.hitbox.height
+				&& player.position.y + player.height >= this.position.y + this.hitbox.height
+				&& player.position.x >= this.position.x + 30
+				&& player.position.x <= this.position.x + this.hitbox.width + 30)
+			{
+				this.debugFrameColor = 'red'
+				player.gameover = true
+				lives--
+				caricatore_nemico = []
+				setTimeout(init, 25)
+				return
 			}
+			else if (player.velocity.y > 0)
+			{
+				if (player.position.y + player.height >= this.position.y
+					&& player.position.y + player.height <= this.position.y + 10
+					&& player.position.x + player.width >= this.position.x
+					&& player.position.x <= this.position.x + this.width) {
+					this.debugFrameColor = 'red'
+					player.gameover = true
+					lives--
+					caricatore_nemico = []
+					setTimeout(init, 25)
+					return
+				}
+
+			}
+			else
+				this.debugFrameColor = 'black'
 		}
+
+		if (!this.available && !this.goingR)
+		{
+			this.position.x -= 5
+			this.framesY = 1
+		}
+		else if (!this.available)
+		{
+			this.position.x += 5
+			this.framesY = 0
+		}
+		
+		if (this.position.x < 0 || this.position.x > canvas.width)
+			this.available = true
+		
+
+		this.elapsedFrames++
+		
 		if(this.elapsedFrames % this.frameBuffer == 0)
 		{
 			this.framesX++
@@ -369,7 +390,10 @@ class Platform{
         this.position={
             x,
             y
-        }
+		}
+		this.rotating_x = x
+		this.const_y = y
+
         this.movable = movable
         this.image = new Image()
         this.image.onload
@@ -380,77 +404,113 @@ class Platform{
 		this.destra = false
 		this.tempoSinistro = 0
 		this.tempoDestro = 0
+		this.angolo = 0
     }
 	move_platform(dir){
-		switch(dir){
-		case 1:
-			if (this.sopra){	
-			this.position.y -= 1.5;
-			this.tempoSinistro += 1; 
+		switch (dir)
+		{
+			//verticale
+			case 1:
+				if (this.sopra){	
+				this.position.y -= 1.5;
+				this.tempoSinistro += 1; 
 
-			if (this.tempoSinistro >= 100) { 
-				this.sopra = false;
-				this.sotto = true;
-				this.tempoSinistro = 0; 
+				if (this.tempoSinistro >= 100) { 
+					this.sopra = false;
+					this.sotto = true;
+					this.tempoSinistro = 0; 
+				}
 			}
-		}
-		if (this.sotto){
-			this.position.y += 1.5;
-			this.tempoDestro += 1; 
+			if (this.sotto){
+				this.position.y += 1.5;
+				this.tempoDestro += 1; 
 
-			if (this.tempoDestro >= 100) { 
-				this.sopra = true;
-				this.sotto = false;
-				this.tempoDestro = 0; 
+				if (this.tempoDestro >= 100) { 
+					this.sopra = true;
+					this.sotto = false;
+					this.tempoDestro = 0; 
+				}
 			}
-		}
-		break
-		//orizzontale
-		case 2:
-		if (this.sinistra){	
-			this.position.x -= 1.5;
-			this.tempoSinistro += 1; 
+				break
+			//verticale inverso
+			case 2:
+				if (this.sopra) {
+					this.position.y += 1.5;
+					this.tempoSinistro += 1;
 
-			if (this.tempoSinistro >= 100) { 
-				this.sinistra = false;
-				this.destra = true;
-				this.tempoSinistro = 0; 
-			}
-		}
-		if (this.destra){
-			this.position.x += 1.5;
-			this.tempoDestro += 1; 
+					if (this.tempoSinistro >= 100) {
+						this.sopra = false;
+						this.sotto = true;
+						this.tempoSinistro = 0;
+					}
+				}
+				if (this.sotto) {
+					this.position.y -= 1.5;
+					this.tempoDestro += 1;
 
-			if (this.tempoDestro >= 100) { 
-				this.sinistra = true;
-				this.destra = false;
-				this.tempoDestro = 0; 
-			}
-		}
-		break
-		//orizzontale inverso
-		case 3:
-		if (this.sinistra){	
-			this.position.x += 1.5;
-			this.tempoSinistro += 1; 
+					if (this.tempoDestro >= 100) {
+						this.sopra = true;
+						this.sotto = false;
+						this.tempoDestro = 0;
+					}
+				}
+			break
+			//orizzontale
+			case 3:
+			if (this.sinistra){	
+				this.position.x -= 1.5;
+				this.tempoSinistro += 1; 
 
-			if (this.tempoSinistro >= 100) { 
-				this.sinistra = false;
-				this.destra = true;
-				this.tempoSinistro = 0; 
+				if (this.tempoSinistro >= 100) { 
+					this.sinistra = false;
+					this.destra = true;
+					this.tempoSinistro = 0; 
+				}
 			}
-		}
-		if (this.destra){
-			this.position.x -= 1.5;
-			this.tempoDestro += 1; 
+			if (this.destra){
+				this.position.x += 1.5;
+				this.tempoDestro += 1; 
 
-			if (this.tempoDestro >= 100) { 
-				this.sinistra = true;
-				this.destra = false;
-				this.tempoDestro = 0; 
+				if (this.tempoDestro >= 100) { 
+					this.sinistra = true;
+					this.destra = false;
+					this.tempoDestro = 0; 
+				}
 			}
-		}
-		break
+			break
+			//orizzontale inverso
+			case 4:
+				if (this.sinistra){	
+					this.position.x += 1.5;
+					this.tempoSinistro += 1; 
+
+					if (this.tempoSinistro >= 100) { 
+						this.sinistra = false;
+						this.destra = true;
+						this.tempoSinistro = 0; 
+					}
+				}
+				if (this.destra){
+					this.position.x -= 1.5;
+					this.tempoDestro += 1; 
+
+					if (this.tempoDestro >= 100) { 
+						this.sinistra = true;
+						this.destra = false;
+						this.tempoDestro = 0; 
+					}
+				}
+			break
+			//circolare
+			case 5:
+				this.position.x = this.rotating_x + 75 * Math.cos(this.angolo)
+				this.position.y = this.const_y + 75 * Math.sin(this.angolo)
+				this.angolo += 0.05
+			break
+			//circolare inverso
+			case 6:
+
+			break
 		}
 	}
 	update(player){
@@ -508,7 +568,7 @@ class Obstacle{
 		this.tempoDestro = 0
     }
 	move_Obstacle(dir){
-		console.log(dir)
+		//console.log(dir)
 		switch(dir){
 		//orizzontale
 		case 1:
@@ -535,30 +595,23 @@ class Obstacle{
 		break
 		}
 	}
-	update(player){
-		if(lives == 0){
-			player.gameover = true
-			printText(c, "red" , 24, "Game Over! Non ti sei diplomato", 0)
-			Death.play()
-			setTimeout(function(){
-			lives = 3
-			splash.style.display = "block"
-			game.style.display = "none"
-			},1500)
-		}
-		else{
-			if(player.position.y + player.height >= this.position.y
-				&& player.position.y + player.height + player.velocity.y >= this.position.y 
-				&& player.position.x + player.width >= this.position.x + 30
-				&& player.position.x + player.width <= this.position.x + this.image.width + 30){
+	//collisione col cactus e giocatore
+	update(player)
+	{
+		if(player.position.y + player.height >= this.position.y
+			&& player.position.y + player.height + player.velocity.y >= this.position.y 
+			&& player.position.x + player.width >= this.position.x + 30
+			&& player.position.x + player.width <= this.position.x + this.image.width + 30)
+		{
 			player.gameover = true
 			lives--
-            setTimeout(init, 25)
+		      setTimeout(init, 25)
 			return
-			}
+		}
+
 		if(this.movable != 0)
 			this.move_Obstacle(this.movable)
-		}
+		
 	}
     draw(){
         c.drawImage(this.image,this.position.x,this.position.y,
@@ -571,10 +624,11 @@ class Layer{
     constructor(x , y, speedMod, source){
 		this.x = x
         this.y = y
-		this.width = 1788
-		this.height = 545
 		this.image = new Image()
-        this.image.onload
+		this.image.onload = () => {
+			this.width = this.image.width;
+			this.height = this.image.height;
+		}
         this.image.src = source
         this.speedMod = speedMod
         this.speed = gameSpeed * this.speedMod
