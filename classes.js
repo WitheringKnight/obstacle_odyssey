@@ -42,7 +42,7 @@ class Player{
 		if(lives == 0){
 			//next = 0
 			this.gameover = true
-			printText(c, "red" , 24, "Game Over! Non ti sei diplomato", 0)
+			printText(c, "red" , 24, "Game Over! Non ti sei diplomato", canvas.width/2, canvas.height/2)
 			Death.play()
 			setTimeout(function(){
 			lives = 3
@@ -95,17 +95,19 @@ class Player{
 }
 
 class Enemy{
-    constructor(x, y){
+    constructor(x, y, movable){
         this.position = {
             x, 
             y
-        }
-		
+		}
+
+		this.rotating_x = x
+		this.const_y = y
+
         this.velocity = {
             x: 0,
             y: 0
         }
-        
         this.sprite = new Image()
         this.sprite.onload
         this.sprite.src = "img/enemy.png"
@@ -128,6 +130,9 @@ class Enemy{
 		this.outOfBullets = false
 		this.tempoSinistro = 0
 		this.tempoDestro = 0
+		this.movable = movable
+		this.rot_speed = 0
+
     }
     draw()
 	{
@@ -138,12 +143,10 @@ class Enemy{
 		if (!this.goingR) {
 			this.hitbox_posX = this.position.x + 77
 			this.hitbox_posX -= this.hitbox_width
-			//console.log("sinistra: " + this.hitbox_width)
 		}
-		else {
+		else 
 			this.hitbox_posX = this.position.x
-			//console.log("destra: " + this.hitbox_width)
-		}
+		
 
 		if (debug)
 		{
@@ -153,42 +156,81 @@ class Enemy{
 			c.stroke();
 		}
     }
-	update()
+	update(player)
 	{
 		this.elapsedFrames++
-		
-		if (this.sinistra && ! this.stopWalking)
-		{	
-			this.goingR = false;
-			this.framesY = 3
-			this.position.x -= 5;
-			this.tempoSinistro += 1; 
 
-			if (this.tempoSinistro >= 120)
-			{ 
-				
-				this.sinistra = false;
-				this.destra = true;
-				this.tempoSinistro = 0;
-				this.elapsedFrames = 0
-			}
-		}
-		else if (this.destra && ! this.stopWalking)
+		if(this.movable)
 		{
-			this.goingR = true;
-			this.framesY = 2
-			this.position.x += 5;
-			this.tempoDestro += 1; 
+			if (this.sinistra && !this.stopWalking)
+			{	
+				this.goingR = false;
+				this.framesY = 3
+				this.position.x -= 5;
+				this.tempoSinistro += 1; 
 
-			if (this.tempoDestro >= 120) 
-			{ 
-				this.sinistra = true;
-				this.destra = false;
-				this.tempoDestro = 0;
-				this.elapsedFrames = 0
+				if (this.tempoSinistro >= 120)
+				{ 
+					
+					this.sinistra = false;
+					this.destra = true;
+					this.tempoSinistro = 0;
+					this.elapsedFrames = 0
+				}
+			}
+			else if (this.destra && ! this.stopWalking)
+			{
+				this.goingR = true;
+				this.framesY = 2
+				this.position.x += 5;
+				this.tempoDestro += 1; 
+
+				if (this.tempoDestro >= 120) 
+				{ 
+					this.sinistra = true;
+					this.destra = false;
+					this.tempoDestro = 0;
+					this.elapsedFrames = 0
+				}
 			}
 		}
-		
+		else 
+		{
+			if (player.position.x > this.position.x)
+			{
+				this.framesY = 0
+				this.goingR = true
+			}
+
+			this.position.x = this.rotating_x + 75 * Math.cos(this.rot_speed)
+			this.position.y = this.const_y + 75 * Math.sin(this.rot_speed)
+			this.rot_speed += 0.05
+		}
+
+		//controllo le collisioni del giocatore col nemico
+		if (player.position.x < this.hitbox_posX + this.hitbox_width && player.position.x + player.width > this.hitbox_posX) {
+			this.debugFrameColor = 'red'
+			this.stopWalking = true
+
+			sparaAeroplanino(this); // Chiama la funzione asincrona
+
+			if (!this.outOfBullets) {
+				this.goingR ? this.framesY = 4 : this.framesY = 5
+			}
+			else {
+				if (this.goingR)
+					this.framesY = 0
+			    else
+					this.framesY = 1
+			}
+
+		}
+		else {
+			if (this.outOfBullets) {
+				this.stopWalking = false
+				this.debugFrameColor = 'black'
+			}
+		}
 
 		if(this.elapsedFrames % this.frameBuffer == 0)
 		{
@@ -198,17 +240,7 @@ class Enemy{
 			
 			if (this.framesX > 7)
 			    this.framesX = 0
-
-			// il nemico sta fermo
-
-			//else{
-			//	this.framesX++
-			//	if(this.goingR)
-			//		this.framesY = 0
-			//	else
-			//		this.framesY = 1
-			//}
-			//this.elapsedFrames = 0    
+  
     }
 }
 
@@ -273,72 +305,134 @@ class Enemy_paperplane
     update(player)
 	{
 		//collisione giocatore -> aeroplanino
-		
-		if(!this.goingR)
-		{
-			if (!this.available && player.position.y + player.height >= this.position.y + this.hitbox.height
-			&& player.position.y + player.height >= this.position.y + this.hitbox.height
-			&& player.position.x + player.width >= this.position.x + 30
-			&& player.position.x + player.width <= this.position.x + this.hitbox.width + 30)
+
+		const playerBottom = player.position.y + player.height;
+		const playerTop = player.position.y;
+		const playerLeft = player.position.x;
+		const playerRight = player.position.x + player.width;
+
+		const thisBottom = this.position.y + this.hitbox.height;
+		const thisTop = this.position.y;
+		const thisLeft = this.position.x + 30;
+		const thisRight = this.position.x + this.hitbox.width + 30;
+
+		if (!this.goingR) {
+			if (!this.available)
 			{
-				this.debugFrameColor = 'red'
-				player.gameover = true
-				lives--
-				caricatore_nemico = []
-				setTimeout(init, 25)
-				return
-			}
-			else if (player.velocity.y > 0)
-			{
-				if (player.position.y + player.height >= this.position.y
-					&& player.position.y + player.height <= this.position.y + 10
-					&& player.position.x + player.width >= this.position.x
-					&& player.position.x <= this.position.x + this.width)
+				// Controllo collisione dal basso
+				if (
+					playerBottom >= thisTop &&
+					playerTop < thisTop &&
+					playerRight > thisLeft &&
+					playerLeft < thisRight
+				) 
 				{
-					this.debugFrameColor = 'red'
-					player.gameover = true
-					lives--
-					caricatore_nemico = []
-					setTimeout(init, 25)
+					gameOver(player)
+					return
+				}
+				
+
+				// Controllo collisione frontale (da destra)
+				if (
+					playerRight >= thisLeft &&
+					playerLeft < thisLeft &&
+					playerBottom > thisTop &&
+					playerTop < thisBottom
+				) 
+				{
+					gameOver(player)
+					return
+				}
+				
+
+				// Controllo collisione laterale (da sinistra)
+				if (
+					playerLeft <= thisRight &&
+					playerRight > thisRight &&
+					playerBottom > thisTop &&
+					playerTop < thisBottom
+				) 
+				{
+					gameOver(player)
+					return
+				}
+				
+
+				// Controllo collisione dall'alto
+				if (
+					playerTop <= thisBottom &&
+					playerBottom > thisBottom &&
+					playerRight > thisLeft &&
+					playerLeft < thisRight
+				) 
+				{
+					gameOver(player)
 					return
 				}
 				
 			}
-			else
-				this.debugFrameColor = 'black'
+			this.debugFrameColor = 'black'; // Nessuna collisione
 		}
 		else
 		{
-			if (!this.available && player.position.y + player.height >= this.position.y + this.hitbox.height
-				&& player.position.y + player.height >= this.position.y + this.hitbox.height
-				&& player.position.x >= this.position.x + 30
-				&& player.position.x <= this.position.x + this.hitbox.width + 30)
-			{
-				this.debugFrameColor = 'red'
-				player.gameover = true
-				lives--
-				caricatore_nemico = []
-				setTimeout(init, 25)
-				return
-			}
-			else if (player.velocity.y > 0)
-			{
-				if (player.position.y + player.height >= this.position.y
-					&& player.position.y + player.height <= this.position.y + 10
-					&& player.position.x + player.width >= this.position.x
-					&& player.position.x <= this.position.x + this.width) {
-					this.debugFrameColor = 'red'
-					player.gameover = true
-					lives--
-					caricatore_nemico = []
-					setTimeout(init, 25)
+			if (!this.available) {
+
+				// Controllo collisione dal basso
+				if (
+					playerBottom >= thisTop &&
+					playerTop < thisTop &&
+					playerRight > thisLeft &&
+					playerLeft < thisRight
+				) 
+				{
+					gameOver(player)
 					return
 				}
+				
 
+				// Controllo collisione frontale (da sinistra)
+				if (
+					playerLeft <= thisRight &&
+					playerRight > thisRight &&
+					playerBottom > thisTop &&
+					playerTop < thisBottom
+				) 
+				{
+					gameOver(player)
+					return
+				}
+				
+
+				// Controllo collisione laterale (da destra)
+				if (
+					playerRight >= thisLeft &&
+					playerLeft < thisLeft &&
+					playerBottom > thisTop &&
+					playerTop < thisBottom
+				) 
+				{
+					gameOver(player)
+					return
+				}
+				
+
+				// Controllo collisione dall'alto
+				if
+				(
+					playerTop <= thisBottom &&
+					playerBottom > thisBottom &&
+					playerRight > thisLeft &&
+					playerLeft < thisRight
+				) 
+				{
+					gameOver(player)
+					return
+				}
 			}
-			else
-				this.debugFrameColor = 'black'
+			this.debugFrameColor = 'black'; // Nessuna collisione
 		}
+
+
 
 		if (!this.available && !this.goingR)
 		{
@@ -404,7 +498,7 @@ class Platform{
 		this.destra = false
 		this.tempoSinistro = 0
 		this.tempoDestro = 0
-		this.angolo = 0
+		this.rot_speed = 0
     }
 	move_platform(dir){
 		switch (dir)
@@ -503,9 +597,9 @@ class Platform{
 			break
 			//circolare
 			case 5:
-				this.position.x = this.rotating_x + 75 * Math.cos(this.angolo)
-				this.position.y = this.const_y + 75 * Math.sin(this.angolo)
-				this.angolo += 0.05
+				this.position.x = this.rotating_x + 75 * Math.cos(this.rot_speed)
+				this.position.y = this.const_y + 75 * Math.sin(this.rot_speed)
+				this.rot_speed += 0.05
 			break
 			//circolare inverso
 			case 6:
@@ -568,7 +662,6 @@ class Obstacle{
 		this.tempoDestro = 0
     }
 	move_Obstacle(dir){
-		//console.log(dir)
 		switch(dir){
 		//orizzontale
 		case 1:

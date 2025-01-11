@@ -1,10 +1,14 @@
-//05/01/2025 - v1.7
+//11/01/2025 - v1.7.5
 
-//changelog
-//aggiunta collisione con i proiettili nemici
-//cambio grafica del secondo livello
-//aggiunta piattaforma roteante
-//ottimizzazione del codice
+//-aggiunto livello corrente 
+//-cambiato colore carattere vite 
+//-aggiunto un secondo nemico sulla piattaforma roteante 
+//-modificato enemy[0] con il foreach 
+//-aggiunto il suono dei passi nel secondo livello 
+
+//da fare
+//-(opzionale) cambiare background nel gameover
+//-(opzionale) stoppare il nemico finchè non sono stati lanciati tutti i proiettili
 
 
 
@@ -26,7 +30,6 @@ let Music = new Audio("sounds/Music.mp3")
 Music.loop = true
 let Victory = new Audio("sounds/Victory.mp3")
 let Death = new Audio("sounds/Death.mp3")
-let Steps = new Audio("sounds/Steps.mp3")
 let splash = document.getElementById('splash_screen')
 let game = document.getElementById('game')
 
@@ -66,6 +69,9 @@ function init() {
             stones:[
                 new genericObject(758,  460, "img/sasso2.png")
                 ],
+            steps:[
+                new Audio("sounds/Steps.mp3")
+            ],
             Obstacles:[
                 new Obstacle(2350,  420,0, "img/cactus.png"),
                 new Obstacle(2750,  420,1, "img/cactus.png")
@@ -95,11 +101,15 @@ function init() {
                   new Pavement(4050, 535,"img/pavement_2.png"),
                   new Pavement(5100, 535,"img/pavement_2.png")
                   ],
-             stones:[
+              stones:[
                   //new genericObject(758,  460, "img/sasso2.png")
-                  ],
+                ],
+              steps:[
+                    new Audio("sounds/StepsOnWood.mp3")
+              ],
               enemies:[
-                  new Enemy(2600, 442)
+                  new Enemy(2600, 442, true),
+                  new Enemy(4700+(200-85)/2, 257, false)
                 ],
               KeyObject:[
                     new genericObject(5300, 285, "img/door_2.png")
@@ -119,10 +129,7 @@ function init() {
     
 
     player = new Player()
-    //console.log(caricatore_nemico)
-
-    //if(next > 0)
-    //    enemy = new Enemy(500, 420)
+    
 	animate()
 }
 
@@ -131,16 +138,24 @@ up_pressed = false
 right_pressed = false
 left_pressed = false
 down_pressed = false
-function animate(){
+function animate() {
+
 	if (player.gameover)
 		return
 
-    setTimeout(() =>{
-        window.requestAnimationFrame(animate)
-        }, 1000 / fps)
+    //setTimeout(() =>{
+    //    window.requestAnimationFrame(animate)
+    //}, 1000 / fps)
+
+    window.requestAnimationFrame(animate)
+
     c.clearRect(0,0, canvas.width, canvas.height)
-    if((left_pressed || right_pressed) && player.can_jump)
-        Steps.play()
+    if ((left_pressed || right_pressed) && player.can_jump)
+    {
+        levels.level[next].steps.forEach(step => {
+            step.play()
+        })
+    }
     levels.level[next].backgrounds.forEach(Layer =>{
         Layer.update()
         Layer.draw()
@@ -157,20 +172,19 @@ function animate(){
 	player.update()
     player.draw()
 
-    if (next == 1)
+    if (caricatore_nemico && next == 1)
     {
         caricatore_nemico.forEach(proiettile => {
-            proiettile.update(player, levels.level[next].enemies[0])
+            proiettile.update(player)
             proiettile.draw()
         })
     }
     
-
-    if (levels.level[next].enemies)
-    {
-        levels.level[next].enemies[0].update()
-        levels.level[next].enemies[0].draw()
-    }
+    levels.level[next].enemies.forEach(enemy => {
+        enemy.update(player)
+        enemy.draw()
+    })
+    
     levels.level[next].platforms.forEach(platform =>{
         platform.update(player)
         platform.draw()
@@ -180,42 +194,9 @@ function animate(){
             Obstacle.update(player)
             Obstacle.draw()
     })
-	printText(c, "white" , 24, "Current lives: " + lives, 1)
+    printText(c, "#404040", 24, "Lives: " + lives, canvas.width / 2, 20)
+    printText(c, "#404040" , 24, "Current level: " + (next+1), 120, 20)
     
-    //controllo le collisioni del giocatore col nemico
-    if (next == 1)
-    {
-        if (player.position.x < levels.level[next].enemies[0].hitbox_posX + levels.level[next].enemies[0].hitbox_width && player.position.x + player.width > levels.level[next].enemies[0].hitbox_posX) 
-        {
-            //console.log("collisione " + levels.level[next].enemies[0].stopWalking)
-            levels.level[next].enemies[0].debugFrameColor = 'red'
-            levels.level[next].enemies[0].stopWalking = true
-
-            sparaAeroplanino(); // Chiama la funzione asincrona
-
-            if (!levels.level[next].enemies[0].outOfBullets)
-            {
-                levels.level[next].enemies[0].goingR ? levels.level[next].enemies[0].framesY = 4 : levels.level[next].enemies[0].framesY = 5
-            }
-            else
-            {
-                if (levels.level[next].enemies[0].goingR)
-                    levels.level[next].enemies[0].framesY = 0
-                else
-                    levels.level[next].enemies[0].framesY = 1
-            }
-            
-        }
-        else
-        {
-            if (levels.level[next].enemies[0].outOfBullets)
-            {
-                levels.level[next].enemies[0].stopWalking = false
-                levels.level[next].enemies[0].debugFrameColor = 'black'
-            }
-        }
-    }
-
     if (right_pressed)
     {
         inc = 5
@@ -247,8 +228,14 @@ function animate(){
             pavement.position.x -= inc
         })
 
-        if(levels.level[next].enemies){
-            levels.level[next].enemies[0].position.x -= inc
+        if (levels.level[next].enemies)
+        {
+            levels.level[next].enemies.forEach(enemy => {
+                if(enemy.movable)
+                    enemy.position.x -= inc
+                else
+                    enemy.rotating_x -= inc
+            })
         }
 
         levels.level[next].stones.forEach((stone) =>{
@@ -298,8 +285,14 @@ function animate(){
         levels.level[next].KeyObject.forEach((keyobject) => {
             keyobject.position.x += inc
         })
-        if(levels.level[next].enemies){
-            levels.level[next].enemies[0].position.x += inc
+        if (levels.level[next].enemies)
+        {
+            levels.level[next].enemies.forEach(enemy => {
+                if (enemy.movable)
+                    enemy.position.x += inc
+                else
+                    enemy.rotating_x += inc
+            })
         }
         if(levels.level[next].Obstacles)
             levels.level[next].Obstacles.forEach((Obstacle) =>{
@@ -330,16 +323,16 @@ function animate(){
             && player.position.x + player.width <= levels.level[next].KeyObject[0].position.x + levels.level[next].KeyObject[0].image.width + offset_x
             )
             {
-                if(next != 1)
-                    next +=1
-                else
-                    next = 0
                 Music.pause()
                 player.gameover = true
                 caricatore_nemico = []
                 lives = 3
-				printText(c, "red" , 24, "Livello " + next + " completato!", 0)
+				printText(c, "red" , 24, "Livello " + (next+1) + " completato!", canvas.width/2, canvas.height/2)
 				Victory.play()
+                if(next != 1)
+                    next +=1
+                else
+                    next = 0
 				setTimeout(init, 5000)
             }
 }
@@ -399,20 +392,20 @@ window.addEventListener('keyup',(event)=>{
 
 //funzioni
     
-async function sparaAeroplanino()
+async function sparaAeroplanino(enemy)
 {
     if (contaAvailable() == 3)
     {
-        levels.level[next].enemies[0].outOfBullets = false
+        enemy.outOfBullets = false
 
         for (let i = 0; i < caricatore_nemico.length; i++)
         {
             if (i == 0)
             {
                 caricatore_nemico[i].available = false
-                caricatore_nemico[i].goingR = levels.level[next].enemies[0].goingR
-                caricatore_nemico[i].position.x = levels.level[next].enemies[0].position.x
-                caricatore_nemico[i].position.y = levels.level[next].enemies[0].position.y
+                caricatore_nemico[i].goingR = enemy.goingR
+                caricatore_nemico[i].position.x = enemy.position.x
+                caricatore_nemico[i].position.y = enemy.position.y
 
             }
             else
@@ -420,15 +413,15 @@ async function sparaAeroplanino()
                 await new Promise(resolve => {
                     setTimeout(() => {
                         caricatore_nemico[i].available = false
-                        caricatore_nemico[i].goingR = levels.level[next].enemies[0].goingR
-                        caricatore_nemico[i].position.x = levels.level[next].enemies[0].position.x
-                        caricatore_nemico[i].position.y = levels.level[next].enemies[0].position.y
+                        caricatore_nemico[i].goingR = enemy.goingR
+                        caricatore_nemico[i].position.x = enemy.position.x
+                        caricatore_nemico[i].position.y = enemy.position.y
                         resolve(); // Risolvi la promessa quando il setTimeout è finito
                     }, 1000);
                 });
             }
         }
-        levels.level[next].enemies[0].outOfBullets = true
+        enemy.outOfBullets = true
     }
 }
 
@@ -441,14 +434,20 @@ function contaAvailable() {
     return conta
 }
 
-function printText(ctx, color, size, text1, pos) {
+function printText(ctx, color, size, text1, x, y) {
     ctx.fillStyle = color
     ctx.font = "bold " + size + "px" + " sans-serif"
     ctx.textAlign = "center" // posizione x
     ctx.textBaseline = "middle" // posizione y
-    if (pos == 0)
-        ctx.fillText(text1, canvas.width / 2, (canvas.height / 2) - 100)
-    else
-        ctx.fillText(text1, canvas.width / 2, 20)
+    ctx.fillText(text1, x, y)
+    
 
+}
+
+function gameOver(player)
+{
+    player.gameover = true
+    lives--
+    caricatore_nemico = []
+    setTimeout(init, 25)
 }
