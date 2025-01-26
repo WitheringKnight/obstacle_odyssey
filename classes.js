@@ -26,6 +26,10 @@ class Player{
         this.gameover = false
 		this.can_jump = true
 		this.goingR = true
+
+		//creo il caricatore di munizioni
+		this.caricatore_player = []
+		this.proiettili_player = 3
     }
     draw(){
         c.drawImage(this.sprite,this.width * this.framesX,this.height * this.framesY,this.width,this.height,this.position.x,this.position.y,
@@ -39,14 +43,14 @@ class Player{
 		}
     }
     update(){
-		if(lives == 0){
-			//next = 0
+		if (lives == 0)
+		{
+			next = 0
 			this.gameover = true
 			printText(c, "red" , 24, "Game Over! Non ti sei diplomato", canvas.width/2, canvas.height/2)
 			Death.play()
 			setTimeout(function(){
 			lives = 3
-			caricatore_nemico = []
 			splash.style.display = "block"
 			game.style.display = "none"
 			},1500)
@@ -84,12 +88,9 @@ class Player{
             //istruzione che aggiunge la gravità
             this.velocity.y += gravity
         }
-        else{ 
-			this.gameover = true
-			lives--
-			caricatore_nemico = []
-            setTimeout(init, 25)
-        }	
+        else 
+			gameOver(this)
+        	
 		}
     }
 }
@@ -132,8 +133,17 @@ class Enemy{
 		this.tempoDestro = 0
 		this.movable = movable
 		this.rot_speed = 0
+		this.squeezed = false
 
-    }
+		//creo il caricatore di munizioni per il nemico
+		this.caricatore_nemico = []
+		this.proiettili_nemico = 3
+
+		for (let i = 0; i < this.proiettili_nemico; i++)
+			this.caricatore_nemico.push(new Enemy_paperplane())
+
+	}
+
     draw()
 	{
 		
@@ -158,7 +168,31 @@ class Enemy{
     }
 	update(player)
 	{
+		const playerBottom = player.position.y + player.height;
+		const playerTop = player.position.y;
+		const playerLeft = player.position.x;
+		const playerRight = player.position.x + player.width;
+
+		const thisBottom = this.position.y + this.height;
+		const thisTop = this.position.y;
+		const thisLeft = this.position.x;
+		const thisRight = this.position.x + this.width;
+
 		this.elapsedFrames++
+
+		// Controllo collisione dal basso del giocatore
+		if (
+			playerBottom >= thisTop &&
+			playerTop < thisTop &&
+			playerRight > thisLeft &&
+			playerLeft < thisRight &&
+			player.velocity.y > 0.5
+		) {
+			Death.play()
+			this.squeezed = true
+			this.caricatore_nemico = []
+			this.debugFrameColor = "red"
+		}
 
 		if(this.movable)
 		{
@@ -209,7 +243,7 @@ class Enemy{
 
 		//controllo le collisioni del giocatore col nemico
 		if (player.position.x < this.hitbox_posX + this.hitbox_width && player.position.x + player.width > this.hitbox_posX) {
-			this.debugFrameColor = 'red'
+			//this.debugFrameColor = 'red'
 			this.stopWalking = true
 
 			sparaAeroplanino(this); // Chiama la funzione asincrona
@@ -316,123 +350,61 @@ class Enemy_paperplane
 		const thisLeft = this.position.x + 30;
 		const thisRight = this.position.x + this.hitbox.width + 30;
 
-		if (!this.goingR) {
-			if (!this.available)
-			{
-				// Controllo collisione dal basso
-				if (
-					playerBottom >= thisTop &&
-					playerTop < thisTop &&
-					playerRight > thisLeft &&
-					playerLeft < thisRight
-				) 
-				{
-					gameOver(player)
-					return
-				}
-				
-
-				// Controllo collisione frontale (da destra)
-				if (
-					playerRight >= thisLeft &&
-					playerLeft < thisLeft &&
-					playerBottom > thisTop &&
-					playerTop < thisBottom
-				) 
-				{
-					gameOver(player)
-					return
-				}
-				
-
-				// Controllo collisione laterale (da sinistra)
-				if (
-					playerLeft <= thisRight &&
-					playerRight > thisRight &&
-					playerBottom > thisTop &&
-					playerTop < thisBottom
-				) 
-				{
-					gameOver(player)
-					return
-				}
-				
-
-				// Controllo collisione dall'alto
-				if (
-					playerTop <= thisBottom &&
-					playerBottom > thisBottom &&
-					playerRight > thisLeft &&
-					playerLeft < thisRight
-				) 
-				{
-					gameOver(player)
-					return
-				}
-				
-			}
-			this.debugFrameColor = 'black'; // Nessuna collisione
-		}
-		else
+		if (!this.available)
 		{
-			if (!this.available) {
-
-				// Controllo collisione dal basso
-				if (
-					playerBottom >= thisTop &&
-					playerTop < thisTop &&
-					playerRight > thisLeft &&
-					playerLeft < thisRight
-				) 
-				{
-					gameOver(player)
-					return
-				}
-				
-
-				// Controllo collisione frontale (da sinistra)
-				if (
-					playerLeft <= thisRight &&
-					playerRight > thisRight &&
-					playerBottom > thisTop &&
-					playerTop < thisBottom
-				) 
-				{
-					gameOver(player)
-					return
-				}
-				
-
-				// Controllo collisione laterale (da destra)
-				if (
-					playerRight >= thisLeft &&
-					playerLeft < thisLeft &&
-					playerBottom > thisTop &&
-					playerTop < thisBottom
-				) 
-				{
-					gameOver(player)
-					return
-				}
-				
-
-				// Controllo collisione dall'alto
-				if
-				(
-					playerTop <= thisBottom &&
-					playerBottom > thisBottom &&
-					playerRight > thisLeft &&
-					playerLeft < thisRight
-				) 
-				{
-					gameOver(player)
-					return
-				}
+			// Controllo collisione dal basso del giocatore
+			if (
+				playerBottom >= thisTop &&
+				playerTop < thisTop &&
+				playerRight > thisLeft &&
+				playerLeft < thisRight
+			) 
+			{
+				gameOver(player)
+				return
 			}
-			this.debugFrameColor = 'black'; // Nessuna collisione
+			
+
+			// Controllo collisione frontale (da destra)
+			if (
+				playerRight >= thisLeft &&
+				playerLeft < thisLeft &&
+				playerBottom > thisTop &&
+				playerTop < thisBottom
+			) 
+			{
+				gameOver(player)
+				return
+			}
+			
+
+			// Controllo collisione laterale (da sinistra)
+			if (
+				playerLeft <= thisRight &&
+				playerRight > thisRight &&
+				playerBottom > thisTop &&
+				playerTop < thisBottom
+			) 
+			{
+				gameOver(player)
+				return
+			}
+			
+
+			// Controllo collisione dall'alto
+			if (
+				playerTop <= thisBottom &&
+				playerBottom > thisBottom &&
+				playerRight > thisLeft &&
+				playerLeft < thisRight
+			) 
+			{
+				gameOver(player)
+				return
+			}
+			
 		}
-
-
+		this.debugFrameColor = 'black'; // Nessuna collisione
 
 		if (!this.available && !this.goingR)
 		{

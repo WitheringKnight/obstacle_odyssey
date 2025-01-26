@@ -1,30 +1,19 @@
-//11/01/2025 - v1.7.5
+//26/01/2025 - v2.0
 
-//-aggiunto livello corrente 
-//-cambiato colore carattere vite 
-//-aggiunto un secondo nemico sulla piattaforma roteante 
-//-modificato enemy[0] con il foreach 
-//-aggiunto il suono dei passi nel secondo livello 
+//-completato il secondo livello
+//-aggiustato il framerate della requestAnimation
+//-aggiunta la possibilità di eliminare il nemico saltandogli sulla testa
+//-ottimizzazione del codice
+//-aggiunto il suono della morte al nemico
+//-spostato caricatore_nemico nella classe nemico
 
-//da fare
-//-(opzionale) cambiare background nel gameover
-//-(opzionale) stoppare il nemico finchè non sono stati lanciati tutti i proiettili
-
-
-
-//prendo l'indirizzo di memoria del tag canvas tramite una funziona definita nell'oggetto document
 const canvas = document.querySelector('canvas')
-//ottengo le istruzioni di disegno dall'oggetto canvas e le metto in c
 const c = canvas.getContext('2d')
-const fps = 80
-//let timeStamp = 0
-//let lastTime = 0
-//let deltaTime = 0
-//let secondsPassed = 0
-//accedo alla proprietà innerWidth e innerHeight dell'oggetto window 
+const fps = 90
 canvas.width = window.innerWidth
 canvas.height = window.innerHeight
-//imposto la gravità del livello
+
+//variabili globali di livello
 const gravity = 0.5
 let next = 0
 let levels = {}
@@ -38,14 +27,11 @@ let splash = document.getElementById('splash_screen')
 let game = document.getElementById('game')
 let timeoutID = 0
 
-//creo il caricatore di munizioni
-let caricatore_player = []
-let proiettili_player = 3
-
-//creo il caricatore di munizioni per il nemico
-let caricatore_nemico = []
-let proiettili_nemico = 3
-	
+//variabili che gestiscono la pressione e il rilascio dei tasti
+up_pressed = false
+right_pressed = false
+left_pressed = false
+down_pressed = false
 function init() {
     Music.play()
 	gameFrame = 0
@@ -96,7 +82,7 @@ function init() {
                   new Platform(1650, 350, 1, "img/platform2.png"),
                   new Platform(3350,350, 2, "img/platform2.png"),
                   new Platform(3650, 350, 1, "img/platform2.png"),
-                  new Platform(4700, 350, 5, "img/platform2.png")
+                  new Platform(4700, 380, 5, "img/platform2.png")
                   ],
               pavements:[ 
                   new Pavement(700,535,"img/pavement_2.png"),
@@ -114,7 +100,7 @@ function init() {
               ],
               enemies:[
                   new Enemy(2600, 442, true),
-                  new Enemy(4700+(200-85)/2, 257, false)
+                  new Enemy(4700+(200-85)/2, 287, false)
                 ],
               KeyObject:[
                     new genericObject(5300, 285, "img/door_2.png")
@@ -124,13 +110,7 @@ function init() {
         ]
     } 
 
-    //solo secondo livello, da modificare
-    if (next == 1)
-    {
-        for (let i = 0; i < proiettili_nemico; i++)
-            caricatore_nemico.push(new Enemy_paperplane())
-
-    }
+    
     
 
     player = new Player()
@@ -138,25 +118,14 @@ function init() {
 	animate(0)
 }
 
-//variabili che gestiscono la pressione e il rilascio dei tasti
-up_pressed = false
-right_pressed = false
-left_pressed = false
-down_pressed = false
-function animate(/*timeStamp*/) {
+function animate(timestamp) {
 
 	if (player.gameover)
 		return
 
-    //deltaTime = timeStamp - lastTime
-    //secondsPassed = (timeStamp - lastTime) / 1000
-    //lastTime = timeStamp
-
     setTimeout(() =>{
         window.requestAnimationFrame(animate)
     }, 1000 / fps)
-
-    //window.requestAnimationFrame((deltaTime) => animate(deltaTime))
 
     c.clearRect(0,0, canvas.width, canvas.height)
     if ((left_pressed || right_pressed) && player.can_jump)
@@ -181,19 +150,24 @@ function animate(/*timeStamp*/) {
 	player.update()
     player.draw()
 
-    if (caricatore_nemico && next == 1)
-    {
-        caricatore_nemico.forEach(proiettile => {
-            proiettile.update(player)
-            proiettile.draw()
-        })
-    }
+    
 
     if (levels.level[next].enemies) 
     {
         levels.level[next].enemies.forEach(enemy => {
-        enemy.update(player)
-        enemy.draw()
+            if (!enemy.squeezed)
+            { 
+                enemy.update(player)
+                enemy.draw()
+
+                if (enemy.caricatore_nemico)
+                {
+                    enemy.caricatore_nemico.forEach(proiettile => {
+                        proiettile.update(player)
+                        proiettile.draw()
+                    })
+                }
+            }
         })
     }
     
@@ -216,14 +190,16 @@ function animate(/*timeStamp*/) {
         inc = 5
         stop = 1
 
-        if (next == 1) {
-            for (let i = 0; i < caricatore_nemico.length; i++)
-            {
-                if (!caricatore_nemico[i].available && caricatore_nemico[i].goingR)
-                    caricatore_nemico[i].position.x -= 3
-                else
-                    caricatore_nemico[i].position.x -= inc
-            }
+        if (levels.level[next].enemies) {
+            levels.level[next].enemies.forEach(enemy => {
+                for (let i = 0; i < enemy.caricatore_nemico.length; i++)
+                {
+                    if (!enemy.caricatore_nemico[i].available && enemy.caricatore_nemico[i].goingR)
+                        enemy.caricatore_nemico[i].position.x -= 3
+                    else
+                        enemy.caricatore_nemico[i].position.x -= inc
+                }
+            })
         }
 
         //questo forEach serve ad uniformare la velocita di
@@ -268,16 +244,15 @@ function animate(/*timeStamp*/) {
         inc = 5
         stop = 1
         
-        if (next == 1)
-        {
-            for (let i = 0; i < caricatore_nemico.length; i++)
-            {
-                if (!caricatore_nemico[i].available && !caricatore_nemico[i].goingR)
-                    caricatore_nemico[i].position.x += 3
-                else
-                    caricatore_nemico[i].position.x += inc
-                
-            }
+        if (levels.level[next].enemies) {
+            levels.level[next].enemies.forEach(enemy => {
+                for (let i = 0; i < enemy.caricatore_nemico.length; i++) {
+                    if (!enemy.caricatore_nemico[i].available && !enemy.caricatore_nemico[i].goingR)
+                        enemy.caricatore_nemico[i].position.x += 3
+                    else
+                        enemy.caricatore_nemico[i].position.x += inc
+                }
+            })
         }
 
         levels.level[next].backgrounds.forEach((layer) => { 
@@ -339,7 +314,6 @@ function animate(/*timeStamp*/) {
             {
                 Music.pause()
                 player.gameover = true
-                caricatore_nemico = []
                 lives = 3
 				printText(c, "red" , 24, "Livello " + (next+1) + " completato!", canvas.width/2, canvas.height/2)
 				Victory.play()
@@ -408,28 +382,28 @@ window.addEventListener('keyup',(event)=>{
     
 async function sparaAeroplanino(enemy)
 {
-    if (contaAvailable() == 3)
+    if (contaAvailable(enemy) == 3)
     {
         enemy.outOfBullets = false
 
-        for (let i = 0; i < caricatore_nemico.length; i++)
+        for (let i = 0; i < enemy.caricatore_nemico.length; i++)
         {
             if (i == 0)
             {
-                caricatore_nemico[i].available = false
-                caricatore_nemico[i].goingR = enemy.goingR
-                caricatore_nemico[i].position.x = enemy.position.x
-                caricatore_nemico[i].position.y = enemy.position.y
+                enemy.caricatore_nemico[i].available = false
+                enemy.caricatore_nemico[i].goingR = enemy.goingR
+                enemy.caricatore_nemico[i].position.x = enemy.position.x
+                enemy.caricatore_nemico[i].position.y = enemy.position.y
 
             }
             else
             {
                 await new Promise(resolve => {
                     timeoutID = setTimeout(() => {
-                        caricatore_nemico[i].available = false
-                        caricatore_nemico[i].goingR = enemy.goingR
-                        caricatore_nemico[i].position.x = enemy.position.x
-                        caricatore_nemico[i].position.y = enemy.position.y
+                        enemy.caricatore_nemico[i].available = false
+                        enemy.caricatore_nemico[i].goingR = enemy.goingR
+                        enemy.caricatore_nemico[i].position.x = enemy.position.x
+                        enemy.caricatore_nemico[i].position.y = enemy.position.y
                         resolve(); // Risolvi la promessa quando il setTimeout è finito
                     }, 1000);
                 });
@@ -439,10 +413,10 @@ async function sparaAeroplanino(enemy)
     }
 }
 
-function contaAvailable() {
+function contaAvailable(enemy) {
     let conta = 0
-    for (let i = 0; i < caricatore_nemico.length; i++) {
-        if (caricatore_nemico[i].available)
+    for (let i = 0; i < enemy.caricatore_nemico.length; i++) {
+        if (enemy.caricatore_nemico[i].available)
             conta++
     }
     return conta
@@ -463,6 +437,5 @@ function gameOver(player)
     player.gameover = true
     lives--
     clearTimeout(timeoutID)
-    caricatore_nemico = []
     setTimeout(init, 25)
 }
