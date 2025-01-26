@@ -17,12 +17,16 @@ const canvas = document.querySelector('canvas')
 //ottengo le istruzioni di disegno dall'oggetto canvas e le metto in c
 const c = canvas.getContext('2d')
 const fps = 80
+//let timeStamp = 0
+//let lastTime = 0
+//let deltaTime = 0
+//let secondsPassed = 0
 //accedo alla proprietà innerWidth e innerHeight dell'oggetto window 
 canvas.width = window.innerWidth
 canvas.height = window.innerHeight
 //imposto la gravità del livello
 const gravity = 0.5
-let next = 1
+let next = 0
 let levels = {}
 let gameSpeed = 4
 let lives = 3
@@ -32,6 +36,7 @@ let Victory = new Audio("sounds/Victory.mp3")
 let Death = new Audio("sounds/Death.mp3")
 let splash = document.getElementById('splash_screen')
 let game = document.getElementById('game')
+let timeoutID = 0
 
 //creo il caricatore di munizioni
 let caricatore_player = []
@@ -130,7 +135,7 @@ function init() {
 
     player = new Player()
     
-	animate()
+	animate(0)
 }
 
 //variabili che gestiscono la pressione e il rilascio dei tasti
@@ -138,16 +143,20 @@ up_pressed = false
 right_pressed = false
 left_pressed = false
 down_pressed = false
-function animate() {
+function animate(/*timeStamp*/) {
 
 	if (player.gameover)
 		return
 
-    //setTimeout(() =>{
-    //    window.requestAnimationFrame(animate)
-    //}, 1000 / fps)
+    //deltaTime = timeStamp - lastTime
+    //secondsPassed = (timeStamp - lastTime) / 1000
+    //lastTime = timeStamp
 
-    window.requestAnimationFrame(animate)
+    setTimeout(() =>{
+        window.requestAnimationFrame(animate)
+    }, 1000 / fps)
+
+    //window.requestAnimationFrame((deltaTime) => animate(deltaTime))
 
     c.clearRect(0,0, canvas.width, canvas.height)
     if ((left_pressed || right_pressed) && player.can_jump)
@@ -179,21 +188,26 @@ function animate() {
             proiettile.draw()
         })
     }
-    
-    levels.level[next].enemies.forEach(enemy => {
+
+    if (levels.level[next].enemies) 
+    {
+        levels.level[next].enemies.forEach(enemy => {
         enemy.update(player)
         enemy.draw()
-    })
+        })
+    }
     
     levels.level[next].platforms.forEach(platform =>{
         platform.update(player)
         platform.draw()
     })
     if(levels.level[next].Obstacles)  
-        levels.level[next].Obstacles.forEach(Obstacle =>{
-            Obstacle.update(player)
-            Obstacle.draw()
-    })
+    {
+        levels.level[next].Obstacles.forEach(Obstacle => {
+        Obstacle.update(player)
+        Obstacle.draw()
+        })
+    }
     printText(c, "#404040", 24, "Lives: " + lives, canvas.width / 2, 20)
     printText(c, "#404040" , 24, "Current level: " + (next+1), 120, 20)
     
@@ -411,7 +425,7 @@ async function sparaAeroplanino(enemy)
             else
             {
                 await new Promise(resolve => {
-                    setTimeout(() => {
+                    timeoutID = setTimeout(() => {
                         caricatore_nemico[i].available = false
                         caricatore_nemico[i].goingR = enemy.goingR
                         caricatore_nemico[i].position.x = enemy.position.x
@@ -448,6 +462,7 @@ function gameOver(player)
 {
     player.gameover = true
     lives--
+    clearTimeout(timeoutID)
     caricatore_nemico = []
     setTimeout(init, 25)
 }
